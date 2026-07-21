@@ -1,0 +1,268 @@
+// This file defines the data contracts (messages) for your Axiom package.
+// Every node's --input and --output refers to a message defined here.
+//
+// Run `axiom create message <Name>` to scaffold a new message below.
+// Run `axiom generate` to compile these definitions into language bindings in gen/.
+//
+// DOCUMENTATION
+//   Comments written directly above a message or field declaration are extracted
+//   automatically at publish time and shown in the Axiom registry as documentation.
+//   Write your descriptions there — no separate doc files needed.
+//
+//   Leading comment  (no blank line before the declaration) → registry description ✓
+//   Detached comment (blank line before the declaration)    → ignored by registry  ✗
+//
+// This file is yours to edit. Axiom only appends new message blocks — it never
+// overwrites or removes content you have written.
+
+syntax = "proto3";
+
+package christiangeorgelucas.cloudevents_tools;
+
+// A CloudEvents v1.0 structured-mode event, always caller-supplied as JSON
+// text (a single JSON object). Never a URL or file path — this package never
+// fetches or reads anything; the caller provides the full document. The
+// canonical input envelope most nodes in this package consume.
+message EventDocument {
+  string json = 1;
+}
+
+// A single HTTP-style header as a name/value pair, in the same shape used by
+// christiangeorgelucas/http-message-tools's HttpHeader — so a binary-mode
+// CloudEvent's `ce-`-prefixed headers can be produced by / fed to that
+// package's request/response parsing without reshaping.
+message Header {
+  string name = 1;
+  string value = 2;
+}
+
+// A binary-mode CloudEvents representation: the transport headers (including
+// the `ce-id`, `ce-source`, `ce-specversion`, `ce-type`, ... attribute
+// headers and `Content-Type`) and the raw body, exactly as a caller would
+// have received or would send them over HTTP. Never fetched or sent by this
+// package — always caller-supplied and caller-consumed.
+message BinaryModeEvent {
+  repeated Header headers = 1;
+  string body = 2;
+}
+
+// One CloudEvents extension attribute — any top-level attribute outside the
+// v1.0 spec's fixed context-attribute set (id, source, specversion, type,
+// datacontenttype, dataschema, subject, time) and outside data/data_base64.
+message ExtensionAttribute {
+  string name = 1;
+  // Best-effort string form of the value (numbers/booleans stringified).
+  string value = 2;
+  // The exact JSON encoding of the original value, e.g. `"abc"` for a
+  // string, `5` for a number, `true` for a boolean — use this for lossless
+  // round-tripping.
+  string value_json = 3;
+  // Detected JSON type of the value: "string" | "number" | "boolean" |
+  // "null" | "object" | "array".
+  string value_type = 4;
+}
+
+// A single structural or spec-conformance problem found while validating a
+// CloudEvent, naming the offending attribute.
+message Violation {
+  // The context attribute this violation concerns (e.g. "id", "specversion"),
+  // or "" for a document-level problem (e.g. invalid JSON).
+  string attribute = 1;
+  string message = 2;
+}
+
+// The fully parsed, spec-semantic representation of one CloudEvents v1.0
+// event: every required and optional context attribute broken out by name,
+// its extension attributes, and its data payload — the canonical output
+// envelope most nodes in this package produce.
+message StructuredEvent {
+  string id = 1;
+  string source = 2;
+  string specversion = 3;
+  string type = 4;
+  // Optional context attributes; check the matching has_* field before
+  // trusting an empty string means "absent" vs. "explicitly empty".
+  string datacontenttype = 5;
+  bool has_datacontenttype = 6;
+  string dataschema = 7;
+  bool has_dataschema = 8;
+  string subject = 9;
+  bool has_subject = 10;
+  string time = 11;
+  bool has_time = 12;
+  // True when the event carries a data payload (either `data` or `data_base64`).
+  bool has_data = 13;
+  // The `data` payload rendered as text: compact JSON text if the payload is
+  // a JSON value (object/array/number/bool/null), or the raw string if the
+  // payload is a JSON string. Empty when data_encoding is "base64" or "empty".
+  string data = 14;
+  // The raw base64 text of `data_base64`, when the event used it instead of `data`.
+  string data_base64 = 15;
+  // Classification of the data payload: "json" (data is a JSON
+  // object/array/number/bool/null) | "text" (data is a JSON string) |
+  // "base64" (data_base64 set) | "empty" (no data at all).
+  string data_encoding = 16;
+  repeated ExtensionAttribute extensions = 17;
+}
+
+// Result of parsing a structured-mode CloudEvent JSON document.
+message ParseEventResult {
+  bool ok = 1;
+  // Populated iff ok is false: malformed JSON, not a JSON object, or a
+  // required context attribute missing/wrong type.
+  string error = 2;
+  StructuredEvent event = 3;
+}
+
+// Result of validating a CloudEvent document against the CloudEvents v1.0
+// spec's structural requirements.
+message ValidateEventResult {
+  bool valid = 1;
+  repeated Violation violations = 2;
+  // The parsed event, populated on a best-effort basis even when invalid
+  // (fields that could be read are filled; missing/malformed ones are zero-valued).
+  StructuredEvent event = 3;
+}
+
+// Result of extracting only the four REQUIRED CloudEvents v1.0 context
+// attributes (id, source, specversion, type).
+message RequiredAttributesResult {
+  bool ok = 1;
+  string error = 2;
+  string id = 3;
+  string source = 4;
+  string specversion = 5;
+  string type = 6;
+}
+
+// Result of extracting the four OPTIONAL CloudEvents v1.0 context attributes
+// (datacontenttype, dataschema, subject, time). Each has a has_* presence
+// flag since an absent optional attribute and an explicitly empty-string one
+// are distinct.
+message OptionalAttributesResult {
+  bool ok = 1;
+  string error = 2;
+  string datacontenttype = 3;
+  bool has_datacontenttype = 4;
+  string dataschema = 5;
+  bool has_dataschema = 6;
+  string subject = 7;
+  bool has_subject = 8;
+  string time = 9;
+  bool has_time = 10;
+}
+
+// Result of extracting every extension attribute (any top-level attribute
+// outside the spec's fixed context-attribute set and data/data_base64).
+message ExtensionAttributesResult {
+  bool ok = 1;
+  string error = 2;
+  repeated ExtensionAttribute extensions = 3;
+}
+
+// Result of extracting and classifying the `data` payload of a CloudEvent.
+message ExtractDataResult {
+  bool ok = 1;
+  string error = 2;
+  bool has_data = 3;
+  // "json" | "text" | "base64" | "empty" — see StructuredEvent.data_encoding.
+  string data_encoding = 4;
+  string data = 5;
+  string data_base64 = 6;
+  string datacontenttype = 7;
+}
+
+// Result of converting a CloudEvent between structured mode (single JSON
+// document) and binary mode (`ce-`-prefixed headers + body).
+message ModeConversionResult {
+  bool ok = 1;
+  string error = 2;
+  // Populated when converting TO binary mode.
+  repeated Header headers = 3;
+  string body = 4;
+  // Populated when converting TO structured mode.
+  string structured_json = 5;
+  StructuredEvent event = 6;
+}
+
+// Result of detecting which CloudEvents HTTP representation mode a
+// caller-supplied headers+body pair is in.
+message DetectModeResult {
+  bool ok = 1;
+  string error = 2;
+  // "binary" | "structured" | "batch" | "unknown"
+  string mode = 3;
+}
+
+// A single attribute NAME to validate against the CloudEvents naming rules
+// (lower-case ASCII letters and digits only), independent of any event.
+message AttributeNameRequest {
+  string name = 1;
+}
+
+message AttributeNameResult {
+  bool valid = 1;
+  // Populated when valid is false, explaining which rule failed.
+  string reason = 2;
+  // Informational: true when name is longer than the spec's recommended
+  // 20-character SHOULD-limit. Does not affect `valid`.
+  bool exceeds_recommended_length = 3;
+}
+
+message SpecVersionResult {
+  bool ok = 1;
+  string error = 2;
+  string specversion = 3;
+}
+
+// Result of extracting the three attributes a router typically keys on.
+message RoutingFieldsResult {
+  bool ok = 1;
+  string error = 2;
+  string type = 3;
+  string source = 4;
+  string subject = 5;
+}
+
+// A pure structural filter to test a CloudEvent against — the routing
+// primitive. Every set field must match for `matches` to be true; an empty
+// field is not checked. Prefix checks are plain string prefixes (no globbing/regex).
+message MatchFilterRequest {
+  string event_json = 1;
+  string type_exact = 2;
+  string type_prefix = 3;
+  string source_exact = 4;
+  string source_prefix = 5;
+  string subject_exact = 6;
+}
+
+message MatchFilterResult {
+  bool ok = 1;
+  string error = 2;
+  bool matches = 3;
+  // Which of the requested checks passed/failed, e.g. "type_prefix: pass".
+  repeated string reasons = 4;
+}
+
+// A CloudEvents batch document: a JSON array of structured-mode events
+// (the `application/cloudevents-batch+json` format), always caller-supplied text.
+message BatchDocument {
+  string json = 1;
+}
+
+// One event's parse outcome within a batch, at its original array index.
+message BatchItem {
+  int32 index = 1;
+  bool ok = 2;
+  string error = 3;
+  StructuredEvent event = 4;
+}
+
+message BatchParseResult {
+  bool ok = 1;
+  // Populated only for a whole-batch failure (malformed JSON, not a JSON
+  // array, oversized input, too many events) — a single malformed event
+  // within an otherwise-valid array is reported on that BatchItem instead.
+  string error = 2;
+  repeated BatchItem events = 3;
+}

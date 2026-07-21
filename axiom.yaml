@@ -1,0 +1,180 @@
+name: christiangeorgelucas/cloudevents-tools
+version: 0.1.0
+language: typescript
+description: >-
+  Deterministic parsing, spec-conformance validation, and structural
+  inspection of CloudEvents (CNCF CloudEvents v1.0) — the standardized event
+  envelope used by Knative, serverless platforms, and webhook/eventing
+  systems. Treats a CloudEvent as JSON plus CloudEvents-spec-semantic
+  extraction: parse a structured-mode event into its attributes and data,
+  validate against the v1.0 spec's required-attribute and type rules, pull
+  out required/optional/extension context attributes individually, classify
+  and extract the `data` payload (JSON / text / base64), convert between
+  binary-mode (`ce-`-prefixed HTTP headers + body) and structured-mode (a
+  single JSON document) representations in both directions, detect which
+  mode a headers+body pair is in, validate a bare attribute name against the
+  CloudEvents naming rule, and check a routing-style structural filter
+  (type/source/subject) against an event. Batch documents
+  (`application/cloudevents-batch+json`) are parsed as a whole, with a single
+  malformed event reported per-item rather than failing the batch. Uses the
+  CNCF cloudevents/sdk-javascript (Apache-2.0) JSON Schema for v1.0
+  structural validation only — never its CloudEvent object model (whose
+  constructor silently fabricates a missing `id` via random UUID and a
+  missing `time` via the wall clock) and never its HTTP transport/emit
+  surface. An event is always caller-supplied text; this package never
+  fetches a `dataschema`/`source` URI, never touches the network, never reads
+  the wall clock, and never generates randomness — a missing `id` or `time`
+  is reported, never invented. Oversized input, excessive JSON nesting depth,
+  and an oversized batch are rejected as a structured error rather than
+  risking a crash.
+author: Christian George Lucas
+license: MIT
+tags:
+    - cloudevents
+    - cncf
+    - knative
+    - eventing
+    - webhook
+    - serverless
+    - json
+    - validation
+    - event-driven
+    - routing
+nodes:
+    - name: ParseEvent
+      input: EventDocument
+      output: ParseEventResult
+      description: >-
+        Parse a structured-mode CloudEvents v1.0 JSON document into its
+        fully broken-out attributes and data. Does not enforce spec
+        conformance beyond the four required context attributes (id, source,
+        specversion, type) being present and string-typed — use ValidateEvent
+        for full structural conformance checking. Malformed JSON, a non-object
+        document, or a missing/wrong-typed required attribute returns a
+        structured error instead of throwing.
+    - name: ValidateEvent
+      input: EventDocument
+      output: ValidateEventResult
+      description: >-
+        Validate a CloudEvents v1.0 JSON document against the spec's
+        structural rules — required attributes present and correctly typed,
+        `source` and `subject`/`dataschema` following their required URI
+        formats, `time` following RFC 3339, every top-level attribute name
+        restricted to lower-case ASCII letters and digits — using the CNCF
+        SDK's own compiled JSON Schema (the exact validation logic the
+        reference SDK ships), reported as a list of violations rather than a
+        thrown exception. The event is still returned, populated
+        best-effort, even when invalid.
+    - name: ExtractRequiredAttributes
+      input: EventDocument
+      output: RequiredAttributesResult
+      description: >-
+        Extract just the four REQUIRED CloudEvents v1.0 context attributes —
+        id, source, specversion, type. ok is false if any is missing or not a
+        string; no other structural validation is performed.
+    - name: ExtractOptionalAttributes
+      input: EventDocument
+      output: OptionalAttributesResult
+      description: >-
+        Extract the four OPTIONAL CloudEvents v1.0 context attributes —
+        datacontenttype, dataschema, subject, time — each with a has_*
+        presence flag, since an absent optional attribute and one explicitly
+        set to "" are distinct.
+    - name: ExtractExtensionAttributes
+      input: EventDocument
+      output: ExtensionAttributesResult
+      description: >-
+        Extract every extension attribute: any top-level JSON key in the
+        document outside the CloudEvents v1.0 context-attribute set (id,
+        source, specversion, type, datacontenttype, dataschema, subject,
+        time) and outside data/data_base64. Each comes back with a
+        best-effort string form, the exact JSON encoding of its original
+        value (for lossless round-tripping), and its detected JSON type.
+    - name: ExtractData
+      input: EventDocument
+      output: ExtractDataResult
+      description: >-
+        Extract and classify the event's `data` payload: "json" when `data`
+        holds a JSON object/array/number/boolean/null, "text" when `data`
+        holds a JSON string, "base64" when the event uses `data_base64`
+        instead, or "empty" when neither is present. Returns the payload
+        rendered as text (compact JSON, or the raw string) alongside its
+        classification.
+    - name: BinaryToStructured
+      input: BinaryModeEvent
+      output: ModeConversionResult
+      description: >-
+        Convert a caller-supplied binary-mode CloudEvent (`ce-`-prefixed HTTP
+        headers + body, both caller-provided — never fetched over the
+        network) into structured-mode: a single JSON document with the
+        `ce-*` headers mapped back to context attributes and the body placed
+        into `data` (parsed as JSON when the content-type indicates JSON,
+        otherwise kept as text). Requires ce-id, ce-source, ce-specversion,
+        and ce-type headers to be present; missing any returns a structured
+        error. Any other `ce-<name>` header becomes an extension attribute.
+    - name: StructuredToBinary
+      input: EventDocument
+      output: ModeConversionResult
+      description: >-
+        Convert a structured-mode CloudEvents v1.0 JSON document into
+        binary-mode: the `ce-*`-prefixed HTTP headers (plus a Content-Type
+        header, emitted only when the source event set datacontenttype) and
+        a body carrying the data payload as text. A data_base64 payload's
+        base64 text is carried through as the body verbatim, unchanged (this
+        package works over text-only representations, never raw bytes).
+        Requires id, source, specversion, and type; missing any returns a
+        structured error.
+    - name: DetectMode
+      input: BinaryModeEvent
+      output: DetectModeResult
+      description: >-
+        Determine which CloudEvents HTTP representation mode a caller-supplied
+        headers+body pair is in — "structured" (Content-Type
+        application/cloudevents+*), "batch" (Content-Type
+        application/cloudevents-batch+*), "binary" (a ce-id header present),
+        or "unknown" when neither signal is present. Pure header/content-type
+        inspection; the body is never parsed.
+    - name: ValidateAttributeName
+      input: AttributeNameRequest
+      output: AttributeNameResult
+      description: >-
+        Validate a single attribute name against the CloudEvents v1.0 naming
+        rule: lower-case ASCII letters and digits only ("^[a-z0-9]+$"), no
+        punctuation, non-empty. Also flags (informationally, without
+        affecting validity) names longer than the spec's recommended
+        20-character SHOULD-limit.
+    - name: GetSpecVersion
+      input: EventDocument
+      output: SpecVersionResult
+      description: >-
+        Extract just the `specversion` attribute from a CloudEvents JSON
+        document. ok is false if the document is malformed or specversion is
+        missing/not a string.
+    - name: ExtractRoutingFields
+      input: EventDocument
+      output: RoutingFieldsResult
+      description: >-
+        Extract the three attributes a router typically keys decisions on —
+        type, source, subject — in one call. type and source are required by
+        the spec; subject comes back empty when absent.
+    - name: MatchFilter
+      input: MatchFilterRequest
+      output: MatchFilterResult
+      description: >-
+        Check a CloudEvent against a caller-supplied structural filter — the
+        pure routing primitive. Every filter field the caller sets (type
+        exact/prefix, source exact/prefix, subject exact) must match for
+        `matches` to be true; an unset filter field is not checked. No regex,
+        no globbing — plain string equality/prefix only. Returns a
+        pass/fail reason per check performed.
+    - name: BatchParse
+      input: BatchDocument
+      output: BatchParseResult
+      description: >-
+        Parse a CloudEvents batch document (a JSON array of structured-mode
+        events, the application/cloudevents-batch+json format) into
+        individual parsed events, one BatchItem per array element in order.
+        A single malformed event is reported on its own BatchItem without
+        failing the batch; only a whole-document problem (invalid JSON, not
+        a JSON array, oversized input, or too many events) sets the
+        top-level error.
