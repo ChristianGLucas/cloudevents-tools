@@ -3,7 +3,7 @@
 Deterministic parsing, spec-conformance validation, and structural inspection
 of [CloudEvents](https://cloudevents.io/) (CNCF CloudEvents v1.0) — the
 standardized event envelope used by Knative, serverless platforms, and
-webhook/eventing systems. Built for the [Axiom](https://axiom.dev) marketplace
+webhook/eventing systems. Built for the [Axiom](https://axiomide.com) marketplace
 (handle `christiangeorgelucas`).
 
 ## What this is
