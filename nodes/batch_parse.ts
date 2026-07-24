@@ -1,6 +1,6 @@
 import { BatchDocument, BatchParseResult, BatchItem } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, extractRequired, buildStructuredEvent, MAX_BATCH_CHARS, MAX_BATCH_EVENTS } from './lib';
+import { safeParseJson, isPlainObject, extractRequired, buildStructuredEvent } from './lib';
 
 /**
  * Parse a CloudEvents batch document (a JSON array of structured-mode
@@ -10,7 +10,7 @@ import { safeParseJson, isPlainObject, extractRequired, buildStructuredEvent, MA
  */
 export async function batchParse(ax: AxiomContext, input: BatchDocument): Promise<BatchParseResult> {
   const out = new BatchParseResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_BATCH_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);
@@ -19,11 +19,6 @@ export async function batchParse(ax: AxiomContext, input: BatchDocument): Promis
   if (!Array.isArray(parsed.value)) {
     out.setOk(false);
     out.setError('document is not a JSON array');
-    return out;
-  }
-  if (parsed.value.length > MAX_BATCH_EVENTS) {
-    out.setOk(false);
-    out.setError(`batch exceeds maximum of ${MAX_BATCH_EVENTS} events (got ${parsed.value.length})`);
     return out;
   }
 

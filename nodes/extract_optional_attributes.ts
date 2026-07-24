@@ -1,6 +1,6 @@
 import { EventDocument, OptionalAttributesResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, extractOptional, MAX_DOCUMENT_CHARS } from './lib';
+import { safeParseJson, isPlainObject, extractOptional } from './lib';
 
 /**
  * Extract the four OPTIONAL CloudEvents v1.0 context attributes —
@@ -11,7 +11,7 @@ import { safeParseJson, isPlainObject, extractOptional, MAX_DOCUMENT_CHARS } fro
  */
 export async function extractOptionalAttributes(ax: AxiomContext, input: EventDocument): Promise<OptionalAttributesResult> {
   const out = new OptionalAttributesResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);

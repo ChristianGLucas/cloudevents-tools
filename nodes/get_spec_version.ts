@@ -1,6 +1,6 @@
 import { EventDocument, SpecVersionResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, MAX_DOCUMENT_CHARS } from './lib';
+import { safeParseJson, isPlainObject } from './lib';
 
 /**
  * Extract just the `specversion` attribute from a CloudEvents JSON document.
@@ -9,7 +9,7 @@ import { safeParseJson, isPlainObject, MAX_DOCUMENT_CHARS } from './lib';
  */
 export async function getSpecVersion(ax: AxiomContext, input: EventDocument): Promise<SpecVersionResult> {
   const out = new SpecVersionResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);

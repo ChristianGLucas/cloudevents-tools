@@ -1,5 +1,5 @@
 name: christiangeorgelucas/cloudevents-tools
-version: 0.1.0
+version: 0.1.1
 language: typescript
 description: >-
   Deterministic parsing, spec-conformance validation, and structural

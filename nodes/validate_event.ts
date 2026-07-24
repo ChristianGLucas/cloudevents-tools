@@ -1,6 +1,6 @@
 import { EventDocument, ValidateEventResult, Violation } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, structuralViolations, buildStructuredEvent, MAX_DOCUMENT_CHARS } from './lib';
+import { safeParseJson, isPlainObject, structuralViolations, buildStructuredEvent } from './lib';
 
 /**
  * Validate a CloudEvents v1.0 JSON document against the spec's structural
@@ -10,7 +10,7 @@ import { safeParseJson, isPlainObject, structuralViolations, buildStructuredEven
  */
 export async function validateEvent(ax: AxiomContext, input: EventDocument): Promise<ValidateEventResult> {
   const out = new ValidateEventResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setValid(false);
     const v = new Violation();

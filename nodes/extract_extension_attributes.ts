@@ -1,6 +1,6 @@
 import { EventDocument, ExtensionAttributesResult, ExtensionAttribute } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, extractExtensions, MAX_DOCUMENT_CHARS } from './lib';
+import { safeParseJson, isPlainObject, extractExtensions } from './lib';
 
 /**
  * Extract every extension attribute — any top-level JSON key outside the
@@ -10,7 +10,7 @@ import { safeParseJson, isPlainObject, extractExtensions, MAX_DOCUMENT_CHARS } f
  */
 export async function extractExtensionAttributes(ax: AxiomContext, input: EventDocument): Promise<ExtensionAttributesResult> {
   const out = new ExtensionAttributesResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);

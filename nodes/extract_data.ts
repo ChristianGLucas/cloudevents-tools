@@ -1,6 +1,6 @@
 import { EventDocument, ExtractDataResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, classifyData, MAX_DOCUMENT_CHARS } from './lib';
+import { safeParseJson, isPlainObject, classifyData } from './lib';
 
 /**
  * Extract and classify a CloudEvent's `data` payload as "json", "text",
@@ -10,7 +10,7 @@ import { safeParseJson, isPlainObject, classifyData, MAX_DOCUMENT_CHARS } from '
  */
 export async function extractData(ax: AxiomContext, input: EventDocument): Promise<ExtractDataResult> {
   const out = new ExtractDataResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);

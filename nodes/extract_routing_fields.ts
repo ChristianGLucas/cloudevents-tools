@@ -1,6 +1,6 @@
 import { EventDocument, RoutingFieldsResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, MAX_DOCUMENT_CHARS } from './lib';
+import { safeParseJson, isPlainObject } from './lib';
 
 /**
  * Extract the three attributes a router typically keys decisions on — type,
@@ -10,7 +10,7 @@ import { safeParseJson, isPlainObject, MAX_DOCUMENT_CHARS } from './lib';
  */
 export async function extractRoutingFields(ax: AxiomContext, input: EventDocument): Promise<RoutingFieldsResult> {
   const out = new RoutingFieldsResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);

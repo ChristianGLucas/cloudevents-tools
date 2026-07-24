@@ -1,6 +1,6 @@
 import { MatchFilterRequest, MatchFilterResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, MAX_DOCUMENT_CHARS, MAX_FILTER_FIELD_CHARS } from './lib';
+import { safeParseJson, isPlainObject } from './lib';
 
 /**
  * Check a CloudEvent against a caller-supplied structural filter — the pure
@@ -11,7 +11,7 @@ import { safeParseJson, isPlainObject, MAX_DOCUMENT_CHARS, MAX_FILTER_FIELD_CHAR
  */
 export async function matchFilter(ax: AxiomContext, input: MatchFilterRequest): Promise<MatchFilterResult> {
   const out = new MatchFilterResult();
-  const parsed = safeParseJson(input.getEventJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getEventJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);
@@ -21,19 +21,6 @@ export async function matchFilter(ax: AxiomContext, input: MatchFilterRequest): 
     out.setOk(false);
     out.setError('document is not a JSON object');
     return out;
-  }
-  for (const [field, value] of [
-    ['type_exact', input.getTypeExact()],
-    ['type_prefix', input.getTypePrefix()],
-    ['source_exact', input.getSourceExact()],
-    ['source_prefix', input.getSourcePrefix()],
-    ['subject_exact', input.getSubjectExact()],
-  ] as const) {
-    if (value.length > MAX_FILTER_FIELD_CHARS) {
-      out.setOk(false);
-      out.setError(`${field} exceeds maximum length of ${MAX_FILTER_FIELD_CHARS} characters`);
-      return out;
-    }
   }
 
   const type = typeof parsed.value['type'] === 'string' ? (parsed.value['type'] as string) : '';

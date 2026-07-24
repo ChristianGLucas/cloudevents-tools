@@ -34,22 +34,18 @@ interface AjvValidateFn {
 const validateV1Schema = validateV1SchemaRaw as unknown as AjvValidateFn;
 
 // ---- Bounds --------------------------------------------------------------
-// A real CloudEvent is typically well under a few KB; these ceilings are
-// generous (comfortably under the platform's ~4 MiB node-transport cap,
-// with headroom) while still bounding worst-case cost from a hostile caller.
-export const MAX_DOCUMENT_CHARS = 1_000_000; // one EventDocument / BinaryModeEvent body
-export const MAX_BATCH_CHARS = 3_000_000; // one BatchDocument
-export const MAX_BATCH_EVENTS = 1_000;
-export const MAX_HEADERS = 500;
-export const MAX_HEADER_NAME_CHARS = 256;
-export const MAX_HEADER_VALUE_CHARS = 65_536;
-export const MAX_FILTER_FIELD_CHARS = 4_096;
-export const MAX_ATTRIBUTE_NAME_CHARS = 4_096;
+// Payload size, header/event counts, and field lengths are the platform's
+// job to bound, not this package's — every size/count ceiling that only
+// guarded against a hostile caller's resource cost has been removed. The one
+// bound that remains is a genuine correctness guard, not a cost guard: see
+// MAX_JSON_DEPTH below.
+//
 // JSON nesting depth ceiling, enforced by an iterative (non-recursive) walk
 // BEFORE any operation (JSON.stringify, further traversal) that could
-// recurse on the parsed structure — bounding cost independent of
-// MAX_DOCUMENT_CHARS, since a pathologically deep document ("[[[[...") can
-// be small in bytes yet deep enough to overflow a native recursive stack.
+// recurse on the parsed structure — a pathologically deep document
+// ("[[[[...") can be tiny in bytes yet deep enough to overflow a native
+// recursive stack, which no try/catch can reliably contain. This is a
+// stack-safety bound, kept as a structured error path.
 export const MAX_JSON_DEPTH = 64;
 
 // ---- CloudEvents v1.0 attribute vocabulary --------------------------------
@@ -115,14 +111,10 @@ export interface SafeParseResult {
   value: unknown;
 }
 
-/** JSON.parse with a hard size cap (checked BEFORE parsing) and a hard
- * nesting-depth cap (checked immediately after, before the value is used
- * for anything else). Never throws — malformed/oversized input is reported
- * as a structured result. */
-export function safeParseJson(text: string, maxChars: number): SafeParseResult {
-  if (text.length > maxChars) {
-    return { ok: false, error: `input exceeds maximum length of ${maxChars} characters (got ${text.length})`, value: undefined };
-  }
+/** JSON.parse with a hard nesting-depth cap (checked immediately after,
+ * before the value is used for anything else that could recurse on it).
+ * Never throws — malformed input is reported as a structured result. */
+export function safeParseJson(text: string): SafeParseResult {
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -313,21 +305,12 @@ export interface SanitizedHeaders {
   map: Record<string, string>;
 }
 
-/** Bounds and lower-cases a caller-supplied header list. Never throws. */
+/** Lower-cases a caller-supplied header list into a map. Never throws. */
 export function sanitizeHeaders(headers: Header[]): SanitizedHeaders {
-  if (headers.length > MAX_HEADERS) {
-    return { ok: false, error: `headers exceeds maximum of ${MAX_HEADERS} entries (got ${headers.length})`, map: {} };
-  }
   const map: Record<string, string> = {};
   for (const h of headers) {
     const name = h.getName() || '';
     const value = h.getValue() || '';
-    if (name.length > MAX_HEADER_NAME_CHARS) {
-      return { ok: false, error: `header name exceeds maximum length of ${MAX_HEADER_NAME_CHARS} characters`, map: {} };
-    }
-    if (value.length > MAX_HEADER_VALUE_CHARS) {
-      return { ok: false, error: `header value exceeds maximum length of ${MAX_HEADER_VALUE_CHARS} characters`, map: {} };
-    }
     map[name.toLowerCase()] = value;
   }
   return { ok: true, error: '', map };

@@ -10,7 +10,6 @@ import {
   CE_HEADER_TO_ATTR,
   CE_HEADER_PREFIX,
   CONTENT_TYPE_HEADER,
-  MAX_DOCUMENT_CHARS,
 } from './lib';
 
 /**
@@ -30,11 +29,6 @@ export async function binaryToStructured(ax: AxiomContext, input: BinaryModeEven
   const h = sanitized.map;
 
   const body = input.getBody() || '';
-  if (body.length > MAX_DOCUMENT_CHARS) {
-    out.setOk(false);
-    out.setError(`body exceeds maximum length of ${MAX_DOCUMENT_CHARS} characters (got ${body.length})`);
-    return out;
-  }
 
   // Build a synthetic structured-mode object from the binary headers, then
   // reuse the same extraction/build pipeline structured-mode JSON goes
@@ -65,7 +59,7 @@ export async function binaryToStructured(ax: AxiomContext, input: BinaryModeEven
   if (body.length > 0) {
     const contentType = typeof obj['datacontenttype'] === 'string' ? (obj['datacontenttype'] as string) : '';
     if (contentType.length === 0 || looksLikeJsonContentType(contentType)) {
-      const parsedBody = safeParseJson(body, MAX_DOCUMENT_CHARS);
+      const parsedBody = safeParseJson(body);
       if (parsedBody.ok) {
         obj['data'] = parsedBody.value;
       } else {

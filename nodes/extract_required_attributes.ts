@@ -1,6 +1,6 @@
 import { EventDocument, RequiredAttributesResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, extractRequired, MAX_DOCUMENT_CHARS } from './lib';
+import { safeParseJson, isPlainObject, extractRequired } from './lib';
 
 /**
  * Extract just the four REQUIRED CloudEvents v1.0 context attributes — id,
@@ -10,7 +10,7 @@ import { safeParseJson, isPlainObject, extractRequired, MAX_DOCUMENT_CHARS } fro
  */
 export async function extractRequiredAttributes(ax: AxiomContext, input: EventDocument): Promise<RequiredAttributesResult> {
   const out = new RequiredAttributesResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);

@@ -1,6 +1,6 @@
 import { EventDocument, ParseEventResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { safeParseJson, isPlainObject, extractRequired, buildStructuredEvent, MAX_DOCUMENT_CHARS } from './lib';
+import { safeParseJson, isPlainObject, extractRequired, buildStructuredEvent } from './lib';
 
 /**
  * Parse a structured-mode CloudEvents v1.0 JSON document into its fully
@@ -10,7 +10,7 @@ import { safeParseJson, isPlainObject, extractRequired, buildStructuredEvent, MA
  */
 export async function parseEvent(ax: AxiomContext, input: EventDocument): Promise<ParseEventResult> {
   const out = new ParseEventResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);

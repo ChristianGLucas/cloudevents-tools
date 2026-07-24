@@ -10,8 +10,6 @@ import {
   ATTR_TO_CE_HEADER,
   CE_HEADER_PREFIX,
   CONTENT_TYPE_HEADER,
-  MAX_DOCUMENT_CHARS,
-  MAX_HEADER_VALUE_CHARS,
 } from './lib';
 
 function header(name: string, value: string): Header {
@@ -29,7 +27,7 @@ function header(name: string, value: string): Header {
  */
 export async function structuredToBinary(ax: AxiomContext, input: EventDocument): Promise<ModeConversionResult> {
   const out = new ModeConversionResult();
-  const parsed = safeParseJson(input.getJson() || '', MAX_DOCUMENT_CHARS);
+  const parsed = safeParseJson(input.getJson() || '');
   if (!parsed.ok) {
     out.setOk(false);
     out.setError(parsed.error);
@@ -64,11 +62,6 @@ export async function structuredToBinary(ax: AxiomContext, input: EventDocument)
   if (optional.hasDatacontenttype) headers.push(header(CONTENT_TYPE_HEADER, optional.datacontenttype));
 
   for (const ext of extensions) {
-    if (ext.value.length > MAX_HEADER_VALUE_CHARS) {
-      out.setOk(false);
-      out.setError(`extension attribute "${ext.name}" value exceeds maximum header length of ${MAX_HEADER_VALUE_CHARS} characters`);
-      return out;
-    }
     headers.push(header(`${CE_HEADER_PREFIX}${ext.name}`, ext.value));
   }
 

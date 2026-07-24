@@ -1,8 +1,6 @@
 import { BatchDocument } from '../gen/messages_pb';
 import { batchParse } from './batch_parse';
 import { ctx } from './testkit';
-import { MAX_BATCH_EVENTS } from './lib';
-
 function doc(json: string): BatchDocument {
   const d = new BatchDocument();
   d.setJson(json);
@@ -59,12 +57,13 @@ describe('BatchParse', () => {
     expect(result.getOk()).toBe(false);
   });
 
-  it('fails the whole batch when it exceeds the maximum event count', async () => {
-    const batch = Array.from({ length: MAX_BATCH_EVENTS + 1 }, (_, i) => ({
+  it('handles a large batch without crashing (event-count caps are the platform\'s job, not this node\'s)', async () => {
+    const batch = Array.from({ length: 5_000 }, (_, i) => ({
       id: String(i), source: '/x', specversion: '1.0', type: 't',
     }));
     const result = await batchParse(ctx, doc(JSON.stringify(batch)));
-    expect(result.getOk()).toBe(false);
+    expect(result.getOk()).toBe(true);
+    expect(result.getEventsList().length).toBe(5_000);
   });
 
   it('parses an empty batch', async () => {
